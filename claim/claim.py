@@ -15,7 +15,7 @@ class ClaimThread(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.db = bot.api.get_plugin_partition(self)
-        check_reply.fail_msg = 'This thread has been claimed by another user.'
+        check_reply.fail_msg = 'This ticket is already claimed.'
         self.bot.get_command('reply').add_check(check_reply)
         self.bot.get_command('areply').add_check(check_reply)
         self.bot.get_command('fareply').add_check(check_reply)
@@ -64,7 +64,8 @@ class ClaimThread(commands.Cog):
             embed = discord.Embed(
                 color=self.bot.main_color,
                 title="Ticket Claimed",
-                description="Please wait as the assigned support agent reviews your case, you will receive a response shortly.",
+                 mentions.append(ctx.author.mention)
+                    description += f"{ctx.author.mention} Has claimed your ticket.\n",
                 timestamp=ctx.message.created_at,
             )
             embed.set_footer(
@@ -79,28 +80,28 @@ class ClaimThread(commands.Cog):
 
                 if ctx.author.mention in mentions:
                     mentions.remove(ctx.author.mention)
-                    description += f"{ctx.author.mention} will __not__ be notified of any message now.\n"
+                    description += f"{ctx.author.mention} Has unclaimed this ticket.\n"
                 else:
                     mentions.append(ctx.author.mention)
-                    description += f"{ctx.author.mention} will now be notified of all messages received.\n"
+                    description += f"{ctx.author.mention} Has claimed this ticket.\n"
                 await self.bot.config.update()
 
             if thread is None:
                 await self.db.insert_one({'thread_id': str(ctx.thread.channel.id), 'guild': str(self.bot.modmail_guild.id), 'claimers': [str(ctx.author.id)]})
                 async with ctx.typing():
                     await recipient.send(embed=embed)
-                description += "Please respond to the case asap."
+                description += "Please read the ticket and respond"
                 embed.description = description
                 await ctx.reply(embed=embed)
             elif thread and len(thread['claimers']) == 0:
                 await self.db.find_one_and_update({'thread_id': str(ctx.thread.channel.id), 'guild': str(self.bot.modmail_guild.id)}, {'$addToSet': {'claimers': str(ctx.author.id)}})
                 async with ctx.typing():
                     await recipient.send(embed=embed)
-                description += "Please respond to the case asap."
+                description += "Please read the ticket and respond."
                 embed.description = description
                 await ctx.reply(embed=embed)
             else:
-                description += "Thread is already claimed"
+                description += "This ticket is already claimed."
                 embed.description = description
                 await ctx.reply(embed=embed)
 
